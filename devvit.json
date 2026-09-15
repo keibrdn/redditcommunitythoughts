@@ -1,0 +1,109 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "communitythoughts",
+  "post": {
+    "dir": "dist/client",
+    "entrypoints": {
+      "default": {
+        "inline": true,
+        "entry": "splash.html"
+      },
+      "game": {
+        "entry": "game.html"
+      }
+    }
+  },
+  "server": {
+    "dir": "dist/server",
+    "entry": "index.cjs"
+  },
+  "settings": {
+    "subreddit": {
+      "postTitle": {
+        "type": "string",
+        "label": "Pinned post title",
+        "defaultValue": "Community Thoughts"
+      },
+      "starterPrompt": {
+        "type": "string",
+        "label": "Starter prompt (optional, max 200 chars)",
+        "defaultValue": ""
+      },
+      "minKarma": {
+        "type": "number",
+        "label": "Minimum karma to post",
+        "defaultValue": 0
+      },
+      "rateLimit": {
+        "type": "select",
+        "label": "Rate limit",
+        "options": [
+          {
+            "label": "One active thought per user",
+            "value": "one"
+          },
+          {
+            "label": "No limit",
+            "value": "none"
+          }
+        ],
+        "defaultValue": "one"
+      }
+    }
+  },
+  "menu": {
+    "items": [
+      {
+        "label": "Thoughts: Create pinned post",
+        "description": "Create the Community Thoughts pinned post for this subreddit",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/post-create"
+      },
+      {
+        "label": "Thoughts: Reset pinned post",
+        "description": "Recreate the Thoughts post if the original was deleted or lost",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/thoughts-reset-post"
+      },
+      {
+        "label": "Thoughts: Update starter prompt",
+        "description": "Quickly update the carousel starter prompt without visiting Install Settings",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/thoughts-update-prompt"
+      },
+      {
+        "label": "Thoughts: Clear expired",
+        "description": "Manually purge all expired entries from the thoughts index",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/thoughts-clear-expired"
+      }
+    ]
+  },
+  "forms": {
+    "updatePromptForm": "/internal/form/update-prompt-submit"
+  },
+  "triggers": {
+    "onAppInstall": "/internal/triggers/on-app-install",
+    "onCommentDelete": "/internal/triggers/on-comment-delete",
+    "onModAction": "/internal/triggers/on-mod-action"
+  },
+  "permissions": {
+    "reddit": {
+      "enable": true,
+      "asUser": [
+        "SUBMIT_COMMENT"
+      ]
+    }
+  },
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build"
+  },
+  "dev": {
+    "subreddit": "communitythoughts_dev"
+  }
+}
