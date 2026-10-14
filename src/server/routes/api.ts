@@ -1,18 +1,22 @@
 import { Hono } from 'hono';
 import { context, redis, reddit, settings } from '@devvit/web/server';
 import type { T1 } from '@devvit/web/shared';
-import type {
-  Config,
-  DeleteThoughtResponse,
-  ErrorResponse,
-  InitResponse,
-  ReactRequest,
-  ReactResponse,
-  SubmitThoughtRequest,
-  SubmitThoughtResponse,
-  Thought,
-  UserSeenResponse,
+import {
+  MAX_REACTION_EMOJIS,
+  MAX_THOUGHT_LENGTH,
+  isReactionEmoji,
+  type Config,
+  type DeleteThoughtResponse,
+  type ErrorResponse,
+  type InitResponse,
+  type ReactRequest,
+  type ReactResponse,
+  type SubmitThoughtRequest,
+  type SubmitThoughtResponse,
+  type Thought,
+  type UserSeenResponse,
 } from '../../shared/api';
+import { applyThoughtsPostStyles, ensureCurrentPostPinned } from '../core/post';
 
 export const api = new Hono();
 
@@ -35,7 +39,6 @@ const keys = {
 };
 
 const TTL_HOURS = 24;
-const MAX_THOUGHT_LENGTH = 280;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -142,6 +145,11 @@ api.get('/init', async (c) => {
   }
 
   try {
+    applyThoughtsPostStyles(postId).catch(() => {});
+    ensureCurrentPostPinned(postId).catch((error) => {
+      console.error('Failed to pin Thoughts post:', error);
+    });
+
     const currentUser = await reddit.getCurrentUser();
     const userId = currentUser?.id ?? '';
     const username = currentUser?.username ?? '';
@@ -195,6 +203,7 @@ api.get('/init', async (c) => {
     return c.json<InitResponse>({
       type: 'init',
       postId,
+      subredditName: context.subredditName ?? '',
       thoughts,
       config,
       user: {
@@ -380,9 +389,10 @@ api.post('/thoughts/:id/react', async (c) => {
   }
 
   try {
-    const { emoji } = await c.req.json<ReactRequest>();
-    if (!emoji) {
-      return c.json<ErrorResponse>({ status: 'error', message: 'emoji is required' }, 400);
+    const { emoji: rawEmoji } = await c.req.json<ReactRequest>();
+    const emoji = rawEmoji?.trim() ?? '';
+    if (!isReactionEmoji(emoji)) {
+      return c.json<ErrorResponse>({ status: 'error', message: 'A valid emoji is required' }, 400);
     }
 
     const currentUser = await reddit.getCurrentUser();
@@ -411,7 +421,18 @@ api.post('/thoughts/:id/react', async (c) => {
       }
       userVoted = false;
     } else {
-      // Add vote
+      const currentReactions = await redis.hGetAll(reactKey).catch(() => ({} as Record<string, string>));
+      const uniqueEmojis = Object.entries(currentReactions)
+        .filter(([, countStr]) => (parseInt(countStr, 10) || 0) > 0)
+        .map(([key]) => key);
+      const isNewEmoji = !uniqueEmojis.includes(emoji);
+      if (isNewEmoji && uniqueEmojis.length >= MAX_REACTION_EMOJIS) {
+        return c.json<ErrorResponse>(
+          { status: 'error', message: `A thought can have at most ${MAX_REACTION_EMOJIS} reactions` },
+          400,
+        );
+      }
+
       await redis.hSet(voteKey, { [emoji]: '1' });
       newCount = await redis.hIncrBy(reactKey, emoji, 1);
       userVoted = true;

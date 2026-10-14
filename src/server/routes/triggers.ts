@@ -31,7 +31,7 @@ triggers.post('/on-app-install', async (c) => {
   } catch (error) {
     console.error('onAppInstall error:', error);
     return c.json<TriggerResponse>(
-      { status: 'error', message: 'Failed to create pinned post' },
+      { status: 'error', message: 'Failed to create Thoughts post' },
       400,
     );
   }

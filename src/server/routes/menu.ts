@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { UiResponse } from '@devvit/web/shared';
 import type { Form } from '@devvit/shared-types/shared/form.js';
 import { context, redis } from '@devvit/web/server';
-import { createPost } from '../core/post';
+import { createPost, ensurePinnedPost } from '../core/post';
 
 export const menu = new Hono();
 
@@ -17,18 +17,13 @@ const thoughtsKey = (subId: string) => `thoughts:${subId}`;
 // POST /internal/menu/thoughts-reset-post (mod reset)
 // ---------------------------------------------------------------------------
 
-async function doCreatePost() {
-  const subredditName = context.subredditName;
-  const post = await createPost();
-  return { post, subredditName };
-}
-
 menu.post('/post-create', async (c) => {
   try {
-    const { post, subredditName } = await doCreatePost();
+    const post = await ensurePinnedPost();
+    const subredditName = context.subredditName;
     return c.json<UiResponse>(
       {
-        showToast: `Community Thoughts post created! Pin it to the top of r/${subredditName ?? 'your subreddit'}.`,
+        showToast: `Community Thoughts is pinned to the top of r/${subredditName ?? 'your subreddit'}.`,
         navigateTo: `https://reddit.com/r/${subredditName}/comments/${post.id}`,
       },
       200,
@@ -41,10 +36,11 @@ menu.post('/post-create', async (c) => {
 
 menu.post('/thoughts-reset-post', async (c) => {
   try {
-    const { post, subredditName } = await doCreatePost();
+    const post = await createPost();
+    const subredditName = context.subredditName;
     return c.json<UiResponse>(
       {
-        showToast: `Thoughts post recreated! Don't forget to pin it. r/${subredditName ?? ''}`,
+        showToast: `Thoughts post recreated and pinned in r/${subredditName ?? ''}`,
         navigateTo: `https://reddit.com/r/${subredditName}/comments/${post.id}`,
       },
       200,

@@ -21,7 +21,7 @@
     "subreddit": {
       "postTitle": {
         "type": "string",
-        "label": "Pinned post title",
+        "label": "Thoughts post title",
         "defaultValue": "Community Thoughts"
       },
       "starterPrompt": {
@@ -38,14 +38,8 @@
         "type": "select",
         "label": "Rate limit",
         "options": [
-          {
-            "label": "One active thought per user",
-            "value": "one"
-          },
-          {
-            "label": "No limit",
-            "value": "none"
-          }
+          { "label": "One active thought per user", "value": "one" },
+          { "label": "No limit", "value": "none" }
         ],
         "defaultValue": "one"
       }
@@ -54,15 +48,15 @@
   "menu": {
     "items": [
       {
-        "label": "Thoughts: Create pinned post",
-        "description": "Create the Community Thoughts pinned post for this subreddit",
+        "label": "Thoughts: Pin post to top",
+        "description": "Pin the Community Thoughts post so it stays at the top of the feed",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"
       },
       {
-        "label": "Thoughts: Reset pinned post",
-        "description": "Recreate the Thoughts post if the original was deleted or lost",
+        "label": "Thoughts: Reset post",
+        "description": "Recreate and pin the Thoughts post if the original was deleted or lost",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/thoughts-reset-post"
@@ -102,8 +96,5 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build"
-  },
-  "dev": {
-    "subreddit": "communitythoughts_dev"
   }
 }

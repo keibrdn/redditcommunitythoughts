@@ -1,3 +1,15 @@
+// Prototype UI uses 120; PRD draft said 280. Match the design spec.
+export const MAX_THOUGHT_LENGTH = 120;
+export const MAX_REACTION_EMOJIS = 4;
+
+export const isReactionEmoji = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (trimmed.length > 16) return false;
+  if (/^[a-zA-Z0-9\s.,!?'"#@&()[\]_\-:/\\]+$/.test(trimmed)) return false;
+  return [...trimmed].length <= 8;
+};
+
 // ---------------------------------------------------------------------------
 // Shared types between client and server
 // ---------------------------------------------------------------------------
@@ -45,6 +57,7 @@ export type UserState = {
 export type InitResponse = {
   type: 'init';
   postId: string;
+  subredditName: string;
   thoughts: Thought[];
   config: Config;
   user: UserState;
