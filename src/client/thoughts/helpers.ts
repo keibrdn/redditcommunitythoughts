@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from 'react';
-import type { Thought } from '../../shared/api';
+import { posterHandle, type Thought, type UserState } from '../../shared/api';
 
 const AVATAR_COLORS = ['#3f8efc', '#0079d3', '#46d160', '#ff4500', '#7b68ee', '#ffb000'];
 
@@ -17,6 +17,13 @@ export function avatarColor(name: string): string {
 
 export function avatarLetter(name: string): string {
   return (name?.[0] ?? '?').toUpperCase();
+}
+
+export function thoughtHandle(thought: Thought, user: UserState | null): string {
+  const isOwn =
+    user !== null && (thought.authorId === user.userId || thought.id === user.activeThoughtId);
+  if (isOwn && user.username.trim().length > 0) return posterHandle(user.username);
+  return posterHandle(thought.authorName);
 }
 
 export function totalReactions(thought: Thought): number {

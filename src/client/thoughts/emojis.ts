@@ -1,3 +1,5 @@
+export const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'] as const;
+
 export const PICKER_EMOJIS = [
   '👍',
   '👎',

@@ -1,5 +1,18 @@
 type IconProps = { size?: number };
 
+export const ChevronIcon = ({ size = 18, direction }: IconProps & { direction: 'left' | 'right' }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+    style={direction === 'left' ? { transform: 'scaleX(-1)' } : undefined}
+  >
+    <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const PlusIcon = ({ size = 18 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path

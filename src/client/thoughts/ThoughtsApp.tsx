@@ -10,7 +10,7 @@ import {
   type UserState,
 } from '../../shared/api';
 import { ComposerModal } from './ComposerModal';
-import { apiFetch } from './helpers';
+import { apiFetch, thoughtHandle } from './helpers';
 import { OptionsSheet } from './OptionsSheet';
 import { ThoughtsBand } from './ThoughtsBand';
 import { ThoughtViewer } from './ThoughtViewer';
@@ -229,7 +229,7 @@ export const ThoughtsApp = () => {
         isMine={menuThought?.authorId === user?.userId}
         onClose={() => setMenuThought(null)}
         onViewProfile={(thought) => {
-          navigateTo(`https://reddit.com/user/${thought.authorName}`);
+          navigateTo(`https://reddit.com/user/${thoughtHandle(thought, user)}`);
           setMenuThought(null);
         }}
         onHide={(thought) => {

@@ -1,35 +1,32 @@
 import type { MouseEvent } from 'react';
-import type { Thought } from '../../shared/api';
+import type { Thought, UserState } from '../../shared/api';
 import { Avatar } from './Avatar';
-import { activateOnKey, hoursLeftLabel, totalReactions } from './helpers';
+import { activateOnKey, hoursLeftLabel, thoughtHandle, totalReactions } from './helpers';
 
 type ThoughtBubbleProps = {
   thought: Thought;
+  user: UserState | null;
   isMine?: boolean;
   onOpen: (event: MouseEvent) => void;
 };
 
-export const ThoughtBubble = ({ thought, isMine = false, onOpen }: ThoughtBubbleProps) => {
+export const ThoughtBubble = ({ thought, user, isMine = false, onOpen }: ThoughtBubbleProps) => {
   const top = thought.reactions.slice(0, 3);
   const total = totalReactions(thought);
-  const label = isMine ? 'You' : thought.authorName;
+  const handle = thoughtHandle(thought, user);
 
   return (
     <div
       className={`bubble${isMine ? ' mine' : ''}`}
       role="button"
       tabIndex={0}
-      aria-label={
-        isMine
-          ? `Your thought: ${thought.text}. Tap to view or delete.`
-          : `Thought by ${thought.authorName}`
-      }
+      aria-label={`Thought by u/${handle}: ${thought.text}`}
       onClick={onOpen}
       onKeyDown={(event) => activateOnKey(event, () => {})}
     >
       <div className="bhead">
-        <Avatar name={isMine ? 'You' : thought.authorName} color={isMine ? '#3f8efc' : undefined} />
-        <span className="uname">{label}</span>
+        <Avatar name={handle} color={isMine ? '#3f8efc' : undefined} />
+        <span className="uname">{handle}</span>
       </div>
       <p className="pt">{thought.text}</p>
       <div className="bfoot">

@@ -5,6 +5,7 @@ import {
   MAX_REACTION_EMOJIS,
   MAX_THOUGHT_LENGTH,
   isReactionEmoji,
+  posterHandle,
   type Config,
   type DeleteThoughtResponse,
   type ErrorResponse,
@@ -32,6 +33,7 @@ const keys = {
   reactions: (commentId: string) => `reactions:${commentId}`,
   // Hash: emoji → '1' for user voted
   voted: (userId: string, commentId: string) => `voted:${userId}:${commentId}`,
+  author: (commentId: string) => `thoughtAuthor:${commentId}`,
   activeThought: (userId: string, subId: string) => `activeThought:${userId}:${subId}`,
   // Hash: lastSeenAt → epoch ms string
   userPrefs: (userId: string, subId: string) => `userPrefs:${userId}:${subId}`,
@@ -39,6 +41,8 @@ const keys = {
 };
 
 const TTL_HOURS = 24;
+
+const emptyHash = (): Record<string, string> => ({});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -91,12 +95,13 @@ async function buildThoughtObjects(
     ),
   ]);
 
-  // Fetch user vote hashes in parallel (hash: emoji → '1')
-  const voteHashes = await Promise.all(
-    commentIds.map((id) =>
-      redis.hGetAll(keys.voted(userId, id)).catch(() => ({} as Record<string, string>)),
+  // Fetch user vote hashes and the username saved at submit time
+  const [voteHashes, authorMaps] = await Promise.all([
+    Promise.all(
+      commentIds.map((id) => redis.hGetAll(keys.voted(userId, id)).catch(() => emptyHash())),
     ),
-  );
+    Promise.all(commentIds.map((id) => redis.hGetAll(keys.author(id)).catch(() => emptyHash()))),
+  ]);
 
   const thoughts: Thought[] = [];
   for (let i = 0; i < commentIds.length; i++) {
@@ -115,10 +120,16 @@ async function buildThoughtObjects(
       .filter((r) => r.count > 0)
       .sort((a, b) => b.count - a.count);
 
+    const storedAuthor = authorMaps[i] ?? emptyHash();
+    const authorId = storedAuthor.authorId || comment.authorId || '';
+    const authorName = storedAuthor.authorName
+      ? posterHandle(storedAuthor.authorName)
+      : posterHandle(comment.authorName);
+
     thoughts.push({
       id: comment.id,
-      authorId: comment.authorId ?? '',
-      authorName: comment.authorName ?? '[deleted]',
+      authorId,
+      authorName,
       text: comment.body ?? '',
       createdAt: comment.createdAt ? new Date(comment.createdAt).getTime() : Date.now(),
       expiresAt: scoreMembers[i]?.score ?? 0, // score = expiresAt epoch ms
@@ -302,6 +313,10 @@ api.post('/thoughts', async (c) => {
 
     // Store in Redis TTL sorted set (score = expiryEpoch)
     await redis.zAdd(keys.thoughts(subredditId), { score: expiresAt, member: comment.id });
+    await redis.hSet(keys.author(comment.id), {
+      authorId: userId,
+      authorName: posterHandle(username),
+    });
 
     // Track active thought for rate limiting
     if (config.rateLimit === 'one') {
@@ -311,7 +326,7 @@ api.post('/thoughts', async (c) => {
     const thought: Thought = {
       id: comment.id,
       authorId: userId,
-      authorName: username,
+      authorName: posterHandle(username),
       text: text.trim(),
       createdAt: now,
       expiresAt,
@@ -347,12 +362,16 @@ api.delete('/thoughts/:id', async (c) => {
     }
     const userId = currentUser.id;
 
-    // Verify ownership via comment
-    const comment = await reddit.getCommentById(commentId as T1).catch(() => null);
+    // Verify ownership via the saved author, then the comment
+    const [comment, storedAuthor] = await Promise.all([
+      reddit.getCommentById(commentId as T1).catch(() => null),
+      redis.hGetAll(keys.author(commentId)).catch(() => emptyHash()),
+    ]);
     if (!comment) {
       return c.json<ErrorResponse>({ status: 'error', message: 'Thought not found' }, 404);
     }
-    if (comment.authorId !== userId) {
+    const ownsThought = storedAuthor.authorId === userId || comment.authorId === userId;
+    if (!ownsThought) {
       return c.json<ErrorResponse>({ status: 'error', message: 'You can only delete your own thoughts' }, 403);
     }
 
@@ -363,6 +382,7 @@ api.delete('/thoughts/:id', async (c) => {
     await Promise.all([
       redis.zRem(keys.thoughts(subredditId), [commentId]).catch(() => {}),
       redis.del(keys.reactions(commentId)).catch(() => {}),
+      redis.del(keys.author(commentId)).catch(() => {}),
       redis.del(keys.activeThought(userId, subredditId)).catch(() => {}),
     ]);
 

@@ -10,6 +10,11 @@ export const isReactionEmoji = (value: string): boolean => {
   return [...trimmed].length <= 8;
 };
 
+export const posterHandle = (name: string | null | undefined): string => {
+  const trimmed = (name ?? '').trim().replace(/^u\//i, '');
+  return trimmed.length > 0 ? trimmed : '[deleted]';
+};
+
 // ---------------------------------------------------------------------------
 // Shared types between client and server
 // ---------------------------------------------------------------------------

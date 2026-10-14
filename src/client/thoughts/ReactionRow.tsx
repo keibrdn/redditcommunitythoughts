@@ -10,34 +10,45 @@ type ReactionRowProps = {
 };
 
 export const ReactionRow = ({ thought, onReact }: ReactionRowProps) => {
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const blockRef = useRef<HTMLDivElement>(null);
   const used = new Set(thought.reactions.map((reaction) => reaction.emoji));
   const canAddNew = used.size < MAX_REACTION_EMOJIS;
 
   useEffect(() => {
-    if (!pickerOpen) return;
+    if (!open) return;
     const onPointer = (event: PointerEvent) => {
       const block = blockRef.current;
       if (!block) return;
       if (event.target instanceof Node && block.contains(event.target)) return;
-      setPickerOpen(false);
+      setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      setOpen(false);
     };
     window.addEventListener('pointerdown', onPointer);
-    return () => window.removeEventListener('pointerdown', onPointer);
-  }, [pickerOpen]);
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('pointerdown', onPointer);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [open]);
+
+  const pick = (emoji: string) => {
+    onReact(emoji);
+    setOpen(false);
+  };
 
   return (
     <div className="react-block" ref={blockRef}>
-      {pickerOpen && (
+      {open && (
         <EmojiPicker
           used={used}
           canAddNew={canAddNew}
-          onPick={(emoji) => {
-            onReact(emoji);
-            setPickerOpen(false);
-          }}
-          onClose={() => setPickerOpen(false)}
+          onPick={pick}
+          onClose={() => setOpen(false)}
         />
       )}
       <div className="react-row">
@@ -57,10 +68,10 @@ export const ReactionRow = ({ thought, onReact }: ReactionRowProps) => {
         {canAddNew && (
           <button
             type="button"
-            className={`react-chip add${pickerOpen ? ' on' : ''}`}
+            className={`react-chip add${open ? ' on' : ''}`}
             aria-label="Add reaction"
-            aria-expanded={pickerOpen}
-            onClick={() => setPickerOpen((open) => !open)}
+            aria-expanded={open}
+            onClick={() => setOpen((current) => !current)}
           >
             <span className="add-icons">
               <SmileIcon size={16} />
